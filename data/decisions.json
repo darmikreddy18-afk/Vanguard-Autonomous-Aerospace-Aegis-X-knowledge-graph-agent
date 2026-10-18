@@ -1,0 +1,29 @@
+{
+  "_comment": "Synthetic, team-authored demo data layered on seed_data.json. Decisions carry status + valid_from/valid_to; SUPERSEDES points newer -> older.",
+  "decisions": [
+    {
+      "id": "dec_01",
+      "name": "Decision: ESC relay thermal cutoff limit set to 200°C",
+      "statement": "ESC relay thermal cutoff limit is 200°C (Avionics Power Management Specs v3.1).",
+      "status": "superseded",
+      "valid_from": "2026-09-20T00:00:00Z",
+      "valid_to": "2026-10-12T09:15:00Z"
+    },
+    {
+      "id": "dec_02",
+      "name": "Decision: ESC relay thermal cutoff limit lowered to 180°C",
+      "statement": "ESC relay thermal cutoff limit is 180°C to comply with FAA Rule 107-B.",
+      "status": "active",
+      "valid_from": "2026-10-12T09:15:00Z"
+    }
+  ],
+  "graph_edges": [
+    { "source": "dec_01", "target": "doc_01",    "relationship": "DECIDED_IN" },
+    { "source": "dec_01", "target": "person_06", "relationship": "DECIDED_BY" },
+    { "source": "dec_01", "target": "proj_02",   "relationship": "CONCERNS" },
+    { "source": "dec_02", "target": "slack_05",  "relationship": "DECIDED_IN" },
+    { "source": "dec_02", "target": "person_05", "relationship": "DECIDED_BY" },
+    { "source": "dec_02", "target": "proj_02",   "relationship": "CONCERNS" },
+    { "source": "dec_02", "target": "dec_01",    "relationship": "SUPERSEDES" }
+  ]
+}
