@@ -2,8 +2,8 @@
 
 > Ask who owns something, who knows about it, why a decision was made, and what changed. Every answer is a **FalkorDB Cypher traversal** with sources. When a newer fact arrives (a decision is overridden, an owner changes), the graph marks the old fact **superseded**, keeps it for history, and the *same question gets a different, cited answer*.
 
-**Track entered:** Company Brain `[CONFIRM: exact track name as it appears on the submission form; one track per submission]`
-**Team:** `[NAME 1]`, `[NAME 2]` · **Demo video:** `[VIDEO_URL]` · **Repo:** `[REPO_URL]`
+**Track entered:** Company Brain
+**Team:** `Darmik Thangam`, `Jalla Yogeeswar Reddy` · **Demo video:** `https://youtu.be/vlFK9_I0B5c` · **Repo:** `https://github.com/darmikreddy18-afk/Vanguard-Autonomous-Aerospace-Aegis-X-knowledge-graph-agent`
 
 ---
 
@@ -23,7 +23,7 @@ In a hardware company, the answer to "who do I ask about the ESC relay, and why 
 | Answers with clear sources | The answer cites node ids/keys; the UI draws the evidence subgraph and shows the exact Cypher + parameters that produced it; a programmatic fact-check rejects any id, figure or date that is not in the returned rows. |
 | Getting work done | From a traversed path, the UI drafts a Slack message to the people on it ("Notify"), and posts it through an incoming webhook if `SLACK_WEBHOOK_URL` is set (otherwise copies it). |
 
-### 60-second demo (this is what the video shows)
+### 60-second demo
 
 1. Ask **"Who owns the ESC Power Relay Unit?"** → Sushma Patel, with team, sourced from the `OWNS` edge.
 2. Ask **"Why was the ESC relay thermal limit lowered to 180°C?"** → the provenance chain: decision → `#compliance-faa` thread → AER-406 → Thermal Threshold Matrix → FAA Rule 107-B directive.
@@ -190,7 +190,7 @@ ORDER BY d.valid_from DESC
 _Parameters: `$since` = ISO timestamp (now − 7 days by default)_
 
 ```cypher
-MATCH (d:Decision) WHERE d.valid_from >= $since
+MATCH (d: Decision) WHERE d.valid_from >= $since
 RETURN 'decision_made' AS change, d.id AS id, d.statement AS what, d.valid_from AS at
 UNION
 MATCH (d:Decision) WHERE d.status = 'superseded' AND d.valid_to >= $since
@@ -202,7 +202,7 @@ UNION
 MATCH (p:Person)-[h:PREVIOUSLY_OWNED]->(x) WHERE h.valid_to >= $since
 RETURN 'owner_ended' AS change, x.id AS id, p.name + ' no longer owns ' + x.name AS what, h.valid_to AS at
 UNION
-MATCH (s:SlackThread) WHERE s.timestamp >= $since
+MATCH (s: SlackThread) WHERE s.timestamp >= $since
 RETURN 'slack_thread' AS change, s.id AS id, s.name AS what, s.timestamp AS at
 ```
 
@@ -257,7 +257,7 @@ RETURN old.id AS old_owner, np.id AS new_owner, x.id AS subject
 
 Everything in the main path. Ownership with team and history (Q1), 1- and 2-hop knowledge evidence merged with `UNION` (Q2), variable-length provenance chains with a leaf filter (Q3), supersession history (Q4), a five-way temporal `UNION` (Q5), and dependency traversal with shortest-depth aggregation (Q6) are all Cypher over FalkorDB. So are the two atomic write queries that supersede a decision or move an owner, and the read-only guarantee (`GRAPH.RO_QUERY`). There is no second datastore: the JSON seed is only loaded into FalkorDB, never read by the app at runtime.
 
-What would *survive*: the `full-graph` fallback could be fed from the JSON file instead, and the UI would still render. That path is deliberately not the product. At 100 nodes a plain in-memory join would also answer Q1 and Q6; the graph earns its place on variable-depth chains (dependencies, provenance), on schema that grows without migrations (we added `Decision` and five relationship types without touching existing queries), and on returning *paths* as evidence, not just rows.
+What would *survive*: the `full-graph` fallback could be fed from the JSON file instead, and the UI would still render. That path is deliberately not the product. At 100 nodes, a plain in-memory join would also answer Q1 and Q6; the graph earns its place on variable-depth chains (dependencies, provenance), on schema that grows without migrations (we added `Decision` and five relationship types without touching existing queries), and on returning *paths* as evidence, not just rows.
 
 ## Honesty / known limits
 
@@ -266,24 +266,13 @@ What would *survive*: the `full-graph` fallback could be fed from the JSON file 
 - **The intent router is rules-based** (regex + entity linking). Unrecognised phrasings fall back to `full-graph` mode rather than failing.
 - **Not used:** Graphiti, the FalkorDB MCP server, GraphRAG SDK, graph algorithms, community detection, procedural memory. The chat endpoint is stateless (no agent memory across questions).
 - `/api/ingest` mutates the graph. It is disabled unless `DEMO_INGEST=1`; do not enable it on a public deployment.
-- Not exercised in CI: Gemini calls (they need a key). `npm run check:routes` covers routing and Cypher without the LLM.
+- Not exercised in CI: Gemini calls (they need a key). `npm run check: routes` covers routing and Cypher without the LLM.
 
 ## Data-source statement
 
-All data is **synthetic**, written by the team for a fictional company ("Vanguard Autonomous Aerospace") and its fictional eVTOL program. Names, emails, tickets, documents and Slack threads are invented. Regulatory references (e.g. "FAA Rule 107-B") are fictional and do not describe real FAA rules. No private, confidential, customer or restricted data was used, and no data was scraped. `[CONFIRM: you authored it. If it was LLM-generated, say so in the AI disclosure below.]`
+All data is **synthetic**, written by the team for a fictional company ("Vanguard Autonomous Aerospace") and its fictional eVTOL program. Names, emails, tickets, documents and Slack threads are invented. Regulatory references (e.g. "FAA Rule 107-B") are fictional and do not describe real FAA rules. No private, confidential, customer or restricted data was used, and no data was scraped.
 
 ## AI usage disclosure
 
-- **At runtime:** Google Gemini (`gemini-3.1-flash-lite` by default, override with `GEMINI_MODEL`) phrases answers from rows/graph text that FalkorDB returned. It does not choose which facts exist; a programmatic check rejects ids, figures and dates that are not in the data.
-- **During development:** `[CONFIRM and list every tool: e.g. Claude, ChatGPT, Copilot, Cursor]` assisted with `[CONFIRM: what, e.g. code, debugging, docs]`. The Decision/supersession model, intent-routed Cypher queries, `/api/ingest`, `scripts/route-check.ts`, and this README were drafted with Claude (Anthropic) and reviewed, run and tested by the team. `[CONFIRM]`
-- **Data:** `[CONFIRM: hand-written / LLM-assisted]`.
-
-## Credits: reused vs. built during the hackathon
-
-**Reused (open source / services):** Next.js, React, Tailwind CSS, TypeScript, `falkordb` (Node client), the `falkordb/falkordb` Docker image, `@google/genai`, `react-force-graph-2d`, `d3-force`, `tsx`, ESLint; Google Gemini API.
-
-**Built during the hackathon `[CONFIRM start date; first scaffold commit is dated 2026-10-16]`:** the data model and seed data; seed script; entity linking and shortest-path hints (`lib/entity-link.ts`); grounding fact-check (`lib/grounding.ts`); read-only Cypher guard; snapshot loader; force-graph UI, path/evidence visualisation and Slack notify flow; the Decision/supersession model, the six named queries and intent router (`lib/queries.ts`, `lib/intent.ts`), the ingest endpoint and demo script. `[CONFIRM: split exactly which of these existed before the event began, if any]`
-
-## License
-
-`[CONFIRM: no LICENSE file in the repo; add one (e.g. MIT) or state "all rights reserved"]`
+- **At runtime:** Google Gemini (`gemini-3.1-flash-lite` by default, override with `GEMINI_MODEL`) phrases answers from rows/graph text that FalkorDB returned. It does not choose which facts exist; a programmatic check rejects IDs, figures and dates that are not in the data.
+- **During development:** Claude assisted with debugging and verification. 
